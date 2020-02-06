@@ -1,14 +1,9 @@
+import axios from "axios";
 import PropTypes from "prop-types";
 import Form from "../components/Form";
 import { connect } from "react-redux";
 import React, { Component } from "react";
-import {
-  submit,
-  showPopup,
-  validateForm,
-  getCountries,
-  updateUserData
-} from "../actions/form";
+import { showPopup } from "../actions/form";
 import {
   formValidator,
   emailValidator,
@@ -17,83 +12,132 @@ import {
 } from "../utils/validation";
 
 class FormContainer extends Component {
+  state = {
+    countries: [],
+    email: localStorage.getItem("email") || "",
+    country: localStorage.getItem("country") || "",
+    phoneNumber: localStorage.getItem("phoneNumber") || "",
+    personalNumber: localStorage.getItem("personalNumber") || "",
+    isEmailValid: JSON.parse(localStorage.getItem("isEmailValid")) || false,
+    isPhoneNumberValid:
+      JSON.parse(localStorage.getItem("isPhoneNumberValid")) || false,
+    isPersonalNumberValid:
+      JSON.parse(localStorage.getItem("isPersonalNumberValid")) || false
+  };
+
   componentDidMount() {
-    this.props.getCountries();
+    this.getCountries();
   }
 
-  componentDidUpdate(prevProps) {
-    const { email, phoneNumber, personalNumber } = this.props.form.user;
-    if (prevProps.form.user.email !== email) {
+  componentDidUpdate(prevProps, prevState) {
+    const { email, phoneNumber, personalNumber } = this.state;
+    if (prevState.email !== email) {
       this.validateEmail(email);
     }
-    if (prevProps.form.user.phoneNumber !== phoneNumber) {
+    if (prevState.phoneNumber !== phoneNumber) {
       this.validatePhoneNumber(phoneNumber);
     }
-    if (prevProps.form.user.personalNumber !== personalNumber) {
+    if (prevState.personalNumber !== personalNumber) {
       this.validatePersonalNumber(personalNumber);
     }
   }
 
+  getCountries = () => {
+    axios
+      .get("https://restcountries.eu/rest/v2/all")
+      .then(response => {
+        const countries = response.data.map(country => ({
+          value: country.name.toLowerCase(),
+          label: country.name
+        }));
+        this.setState({ countries });
+      })
+      .catch(() => alert("Could not fetch countries, please try again"));
+  };
+
   validateEmail = email => {
     const isEmailValid = emailValidator(email);
 
-    isEmailValid
-      ? this.props.validateForm({
-          ...this.props.form.validation,
-          isEmailValid: true
-        })
-      : this.props.validateForm({
-          ...this.props.form.validation,
-          isEmailValid: false
-        });
+    if (isEmailValid) {
+      this.setState({
+        ...this.state,
+        isEmailValid: true
+      });
+      localStorage.setItem("isEmailValid", "true");
+    } else {
+      this.setState({
+        ...this.state,
+        isEmailValid: false
+      });
+      localStorage.setItem("isEmailValid", "false");
+    }
   };
 
   validatePhoneNumber = phoneNumber => {
     const isPhoneNumberValid = phoneNumberValidator(phoneNumber);
 
-    isPhoneNumberValid
-      ? this.props.validateForm({
-          ...this.props.form.validation,
-          isPhoneNumberValid: false
-        })
-      : this.props.validateForm({
-          ...this.props.form.validation,
-          isPhoneNumberValid: true
-        });
+    if (isPhoneNumberValid) {
+      this.setState({
+        ...this.state,
+        isPhoneNumberValid: true
+      });
+      localStorage.setItem("isPhoneNumberValid", "true");
+    } else {
+      this.setState({
+        ...this.state,
+        isPhoneNumberValid: false
+      });
+      localStorage.setItem("isPhoneNumberValid", "false");
+    }
   };
 
   validatePersonalNumber = personalNumber => {
     const isPersonalNumberValid = personalNumberValidator(personalNumber);
 
-    isPersonalNumberValid
-      ? this.props.validateForm({
-          ...this.props.form.validation,
-          isPersonalNumberValid: false
-        })
-      : this.props.validateForm({
-          ...this.props.form.validation,
-          isPersonalNumberValid: true
-        });
+    if (isPersonalNumberValid) {
+      this.setState({
+        ...this.state,
+        isPersonalNumberValid: true
+      });
+      localStorage.setItem("isPersonalNumberValid", "true");
+    } else {
+      this.setState({
+        ...this.state,
+        isPersonalNumberValid: false
+      });
+      localStorage.setItem("isPersonalNumberValid", "false");
+    }
   };
 
   handleChange = field => e => {
     const value = e.target.value;
-    this.props.updateUserData({ ...this.props.form.user, [field]: value });
+    localStorage.setItem(field, value);
+    this.setState({ ...this.state, [field]: value });
   };
 
   handleCountrySelect = countryObject => {
     const country = countryObject.label;
-    this.props.updateUserData({ ...this.props.form.user, country });
+    localStorage.setItem("country", country);
+    this.setState({ ...this.state, country });
   };
 
   handleSubmit = () => {
-    const { user } = this.props.form;
-    const { country } = this.props.form.user;
     const {
+      email,
+      country,
+      phoneNumber,
+      personalNumber,
       isEmailValid,
       isPhoneNumberValid,
       isPersonalNumberValid
-    } = this.props.form.validation;
+    } = this.state;
+
+    const user = {
+      email,
+      country,
+      phoneNumber,
+      personalNumber
+    };
 
     const isFormValid = formValidator(
       isEmailValid,
@@ -102,23 +146,51 @@ class FormContainer extends Component {
       country
     );
 
-    isFormValid ? this.props.submit(user) : this.props.showPopup("info");
+    isFormValid ? this.onSubmit(user) : this.props.showPopup("info");
+  };
+
+  onSubmit = user => {
+    axios
+      .post("/api/form", user)
+      .then(() => {
+        this.resetState();
+        this.cleanLocalStorage();
+        console.log("Success! 🥂");
+        this.props.showPopup("success");
+      })
+      .catch(() => alert("Could not submit, please try again"));
+  };
+
+  cleanLocalStorage = () => {
+    localStorage.removeItem("email");
+    localStorage.removeItem("country");
+    localStorage.removeItem("phoneNumber");
+    localStorage.removeItem("personalNumber");
+  };
+
+  resetState = () => {
+    this.setState({
+      email: localStorage.getItem("email") || "",
+      country: localStorage.getItem("country") || "",
+      phoneNumber: localStorage.getItem("phoneNumber") || "",
+      personalNumber: localStorage.getItem("personalNumber") || ""
+    });
   };
 
   render() {
     return (
       <Form
+        email={this.state.email}
+        country={this.state.country}
+        countries={this.state.countries}
         handleChange={this.handleChange}
         handleSubmit={this.handleSubmit}
-        email={this.props.form.user.email}
-        countries={this.props.form.countries}
-        country={this.props.form.user.country}
-        phoneNumber={this.props.form.user.phoneNumber}
+        phoneNumber={this.state.phoneNumber}
+        isEmailValid={this.state.isEmailValid}
+        personalNumber={this.state.personalNumber}
         handleCountrySelect={this.handleCountrySelect}
-        personalNumber={this.props.form.user.personalNumber}
-        isEmailValid={this.props.form.validation.isEmailValid}
-        isPhoneNumberValid={this.props.form.validation.isPhoneNumberValid}
-        isPersonalNumberValid={this.props.form.validation.isPersonalNumberValid}
+        isPhoneNumberValid={this.state.isPhoneNumberValid}
+        isPersonalNumberValid={this.state.isPersonalNumberValid}
       />
     );
   }
@@ -129,19 +201,11 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-  getCountries: () => dispatch(getCountries()),
-  submit: payload => dispatch(submit(payload)),
-  showPopup: payload => dispatch(showPopup(payload)),
-  validateForm: payload => dispatch(validateForm(payload)),
-  updateUserData: payload => dispatch(updateUserData(payload))
+  showPopup: payload => dispatch(showPopup(payload))
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(FormContainer);
 
 FormContainer.propTypes = {
-  form: PropTypes.object.isRequired,
-  submit: PropTypes.func.isRequired,
-  validateForm: PropTypes.func.isRequired,
-  getCountries: PropTypes.func.isRequired,
-  updateUserData: PropTypes.func.isRequired
+  showPopup: PropTypes.func.isRequired
 };

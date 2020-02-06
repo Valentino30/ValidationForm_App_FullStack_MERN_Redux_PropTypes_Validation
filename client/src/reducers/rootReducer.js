@@ -1,8 +1,8 @@
-import formReducer from "./formReducer";
+import popupReducer from "./popupReducer";
 import { combineReducers } from "redux";
 
 const rootReducer = combineReducers({
-  form: formReducer
+  popup: popupReducer
 });
 
 export default rootReducer;

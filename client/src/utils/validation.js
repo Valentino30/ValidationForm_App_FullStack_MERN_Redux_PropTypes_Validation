@@ -9,8 +9,8 @@ export const emailValidator = email => {
 export const phoneNumberValidator = phoneNumber => {
   const isPhoneNumberValid =
     phoneNumber.length < 7 || phoneNumber.length > 12 || isNaN(phoneNumber)
-      ? true
-      : false;
+      ? false
+      : true;
   return isPhoneNumberValid;
 };
 
@@ -20,8 +20,8 @@ export const personalNumberValidator = personalNumber => {
     personalNumber.length < 10 ||
     personalNumber.length > 12 ||
     isNaN(personalNumber)
-      ? true
-      : false;
+      ? false
+      : true;
   return isPersonalNumberValid;
 };
 

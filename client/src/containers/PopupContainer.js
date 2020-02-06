@@ -7,7 +7,7 @@ import { closePopup } from "../actions/form";
 class PopupContainer extends Component {
   render() {
     return (
-      <Popup popup={this.props.form.popup} closePopup={this.props.closePopup} />
+      <Popup popup={this.props.popup} closePopup={this.props.closePopup} />
     );
   }
 }
